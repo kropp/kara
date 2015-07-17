@@ -7,7 +7,7 @@ import java.net.URL
 import java.util.concurrent.ConcurrentHashMap
 import java.util.jar.JarFile
 import kotlin.reflect.KClass
-import kotlin.reflect.KMemberProperty
+import kotlin.reflect.KProperty1
 import kotlin.reflect.jvm.internal.KClassImpl
 import kotlin.reflect.jvm.internal.impl.descriptors.ClassDescriptor
 import kotlin.reflect.jvm.internal.impl.descriptors.ClassKind
@@ -19,11 +19,11 @@ import kotlin.reflect.jvm.javaGetter
 import kotlin.reflect.jvm.kotlin
 
 object ReflectionCache {
-    val objects = ConcurrentHashMap<Class<*>, Any>()
-    val companionObjects = ConcurrentHashMap<Class<*>, Any>()
-    val consMetadata = ConcurrentHashMap<Class<*>, Triple<Constructor<*>, Array<Class<*>>, List<ValueParameterDescriptor>>>()
-    val primaryProperites = ConcurrentHashMap<Class<*>, List<String>>()
-    val propertyGetters = ConcurrentHashMap<Pair<KClass<*>, String>, KMemberProperty<Any, Any?>?>()
+    val objects : MutableMap<Class<*>, Any> = ConcurrentHashMap()
+    val companionObjects : MutableMap<Class<*>, Any> = ConcurrentHashMap()
+    val consMetadata : MutableMap<Class<*>, Triple<Constructor<*>, Array<Class<*>>, List<ValueParameterDescriptor>>> = ConcurrentHashMap()
+    val primaryProperites : MutableMap<Class<*>, List<String>> = ConcurrentHashMap()
+    val propertyGetters : MutableMap<Pair<KClass<*>, String>, KProperty1<Any, Any?>?> = ConcurrentHashMap()
 }
 
 private object NullMask
@@ -64,11 +64,11 @@ fun Class<*>.companionObjectInstance(): Any? {
 }
 
 @suppress("UNCHECKED_CAST")
-fun <T> KClass<out T>.propertyGetter(property: String): KMemberProperty<Any, *>? {
+fun <T> KClass<out T>.propertyGetter(property: String): KProperty1<Any, *>? {
     return ReflectionCache.propertyGetters.getOrPut(Pair(this, property)) {
         properties.singleOrNull {
             property == it.javaField?.getName() ?: it.javaGetter?.getName()?.removePrefix("get")?.decapitalize()
-        } as KMemberProperty<Any, *>?
+        } as KProperty1<Any, *>?
     }
 }
 
@@ -111,7 +111,7 @@ fun <T> Class<out T>.buildBeanInstance(allParams: Map<String,String>): T {
 
 fun Any.primaryProperties() : List<String> {
     return ReflectionCache.primaryProperites.getOrPut(javaClass) {
-        (javaClass.kotlin as KClassImpl<*>).__descriptor.getUnsubstitutedPrimaryConstructor()?.getValueParameters()?.map { it.getName().asString() }
+        (javaClass.kotlin as KClassImpl<*>).__descriptor.getUnsubstitutedPrimaryConstructor()?.getValueParameters()?.map { it.getName().asString() }?.toList() ?: emptyList()
     }
 }
 
